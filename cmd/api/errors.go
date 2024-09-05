@@ -44,3 +44,8 @@ func (app *application) methodNotAllowedResponse(w http.ResponseWriter, r *http.
 func (app *application) badRequestResponse(w http.ResponseWriter, r *http.Request, err error) {
 	app.errorResponse(w, r, http.StatusBadRequest, err.Error())
 }
+
+// Errors parameter has the type map[string]string, which is the same as the errors map in Validator type.
+func (app *application) failedValidationResponse(w http.ResponseWriter, r *http.Request, errors map[string]string) {
+	app.errorResponse(w, r, http.StatusUnprocessableEntity, errors)
+}
