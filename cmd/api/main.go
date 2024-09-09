@@ -106,5 +106,6 @@ func openDB(cfg config) (*pgxpool.Pool, error) {
 	if err = pool.Ping(ctx); err != nil {
 		return nil, err
 	}
+
 	return pool, nil
 }
