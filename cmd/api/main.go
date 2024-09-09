@@ -10,6 +10,7 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/igredk/greenlight/internal/data"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
@@ -28,6 +29,7 @@ type config struct {
 type application struct {
 	config config
 	logger *slog.Logger
+	models data.Models
 }
 
 func main() {
@@ -59,6 +61,7 @@ func main() {
 	app := &application{
 		config: cfg,
 		logger: logger,
+		models: data.NewModels(dbPool),
 	}
 
 	mux := http.NewServeMux()
