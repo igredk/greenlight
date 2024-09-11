@@ -98,10 +98,10 @@ func (app *application) updateMovieHandler(w http.ResponseWriter, r *http.Reques
 
 	// Declare an input struct to hold the expected data from the client.
 	var input struct {
-		Title   string       `json:"title"`
-		Year    int32        `json:"year"`
-		Runtime data.Runtime `json:"runtime"`
-		Genres  []string     `json:"genres"`
+		Title   *string       `json:"title"`
+		Year    *int32        `json:"year"`
+		Runtime *data.Runtime `json:"runtime"`
+		Genres  []string      `json:"genres"`
 	}
 
 	// Read the JSON request body data into the input struct.
@@ -111,13 +111,23 @@ func (app *application) updateMovieHandler(w http.ResponseWriter, r *http.Reques
 		return
 	}
 
-	// Copy the values from the request body to the appropriate fields of the movie record.
-	movie.Title = input.Title
-	movie.Year = input.Year
-	movie.Runtime = input.Runtime
-	movie.Genres = input.Genres
+	// If the input.Title value is nil then we know that no corresponding "title" key/
+	// value pair was provided in the JSON request body. So we move on and leave the
+	// movie record unchanged. Otherwise, we update the movie record with the new title value.
+	if input.Title != nil {
+		movie.Title = *input.Title
+	}
+	// We also do the same for the other fields in the input struct.
+	if input.Year != nil {
+		movie.Year = *input.Year
+	}
+	if input.Runtime != nil {
+		movie.Runtime = *input.Runtime
+	}
+	if input.Genres != nil {
+		movie.Genres = input.Genres // We don't need to dereference a slice.
+	}
 
-	// Validate the updated movie record.
 	v := validator.New()
 
 	if data.ValidateMovie(v, movie); !v.Valid() {
@@ -125,7 +135,6 @@ func (app *application) updateMovieHandler(w http.ResponseWriter, r *http.Reques
 		return
 	}
 
-	// Pass the updated movie record to our new Update() method.
 	err = app.models.Movies.Update(movie)
 	if err != nil {
 		app.serverErrorResponse(w, r, err)
