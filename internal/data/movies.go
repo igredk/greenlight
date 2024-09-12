@@ -42,6 +42,30 @@ type MovieModel struct {
 	DB *pgxpool.Pool
 }
 
+// Create a new GetAll() method which returns a slice of movies.
+func (m MovieModel) GetAll(title string, genres []string, filters Filters) ([]*Movie, error) {
+	query := `
+        SELECT id, created_at, title, year, runtime, genres, version
+        FROM movies
+        ORDER BY id`
+
+	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+	defer cancel()
+
+	rows, err := m.DB.Query(ctx, query)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	movies, err := pgx.CollectRows(rows, pgx.RowToAddrOfStructByName[Movie])
+	if err != nil {
+		return nil, err
+	}
+
+	return movies, nil
+}
+
 func (m MovieModel) Insert(movie *Movie) error {
 	query := `
         INSERT INTO movies (title, year, runtime, genres) 
@@ -131,10 +155,8 @@ func (m MovieModel) Delete(id int64) error {
 	if err != nil {
 		return err
 	}
-
 	// Call the RowsAffected() method on the sql.Result object to get the number of rows affected by the query.
 	rowsAffected := result.RowsAffected()
-
 	// If no rows were affected, we know that the movies table didn't contain a record
 	// with the provided ID at the moment we tried to delete it. In that case we
 	// return an ErrRecordNotFound error.
