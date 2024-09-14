@@ -13,6 +13,14 @@ type Filters struct {
 	SortSafelist []string
 }
 
+func (f Filters) limit() int {
+	return f.PageSize
+}
+
+func (f Filters) offset() int {
+	return (f.Page - 1) * f.PageSize
+}
+
 // Check that the client-provided Sort field matches one of the entries in our safelist
 // and if it does, extract the column name from the Sort field by stripping the leading
 // hyphen character (if one exists).
