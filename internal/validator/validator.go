@@ -42,8 +42,8 @@ func (v *Validator) Check(ok bool, key, message string) {
 
 // Generic function which returns true if a specific value is in a list.
 func PermittedValue[T comparable](value T, permittedValues ...T) bool {
-	for i := range permittedValues {
-		if value == permittedValues[i] {
+	for _, v := range permittedValues {
+		if value == v {
 			return true
 		}
 	}
