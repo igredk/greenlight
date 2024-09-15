@@ -4,13 +4,13 @@ import (
 	"context"
 	"flag"
 	"fmt"
-	"log/slog"
 	"net/http"
 	"os"
 	"strconv"
 	"time"
 
 	"github.com/igredk/greenlight/internal/data"
+	"github.com/igredk/greenlight/internal/jsonlog"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
@@ -28,7 +28,7 @@ type config struct {
 
 type application struct {
 	config config
-	logger *slog.Logger
+	logger *jsonlog.Logger
 	models data.Models
 }
 
@@ -43,19 +43,19 @@ func main() {
 
 	flag.Parse()
 
-	// Initialize a new structured logger which writes log entries to the standard out stream.
-	logger := slog.New(slog.NewTextHandler(os.Stdout, nil))
+	logger := jsonlog.New(os.Stdout, jsonlog.LevelInfo)
 
 	dbPool, err := openDB(cfg)
 	if err != nil {
-		logger.Error(err.Error())
+		logger.PrintFatal(err, nil)
 	}
 	defer dbPool.Close()
-	logger.Info("Database connection established")
-	logger.Info(
-		"Database connections pool config",
-		"max open connections", strconv.Itoa(int((dbPool.Config().MaxConns))),
-		"connection idle time", dbPool.Config().MaxConnIdleTime.String(),
+	logger.PrintInfo(
+		"database connection established",
+		map[string]string{
+			"max_conns":      strconv.Itoa(int((dbPool.Config().MaxConns))),
+			"conn_idle_time": dbPool.Config().MaxConnIdleTime.String(),
+		},
 	)
 
 	app := &application{
@@ -75,11 +75,11 @@ func main() {
 		WriteTimeout: 10 * time.Second,
 	}
 
-	logger.Info("starting server", "addr", srv.Addr, "env", cfg.env)
+	logger.PrintInfo("starting server", map[string]string{"addr": srv.Addr, "env": cfg.env})
 	// Start the HTTP server.
 	err = srv.ListenAndServe()
-	logger.Error(err.Error())
-	os.Exit(1)
+	// Use the PrintFatal() method to log the error and exit.
+	logger.PrintFatal(err, nil)
 }
 
 func openDB(cfg config) (*pgxpool.Pool, error) {
