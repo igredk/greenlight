@@ -3,8 +3,6 @@ package main
 import (
 	"context"
 	"flag"
-	"fmt"
-	"net/http"
 	"os"
 	"strconv"
 	"time"
@@ -39,9 +37,10 @@ type application struct {
 
 func main() {
 	var cfg config
-
+	// HTTP server
 	flag.IntVar(&cfg.port, "port", 4000, "API server port")
 	flag.StringVar(&cfg.env, "env", "development", "Environment (development|staging|production)")
+	// Database
 	flag.StringVar(&cfg.db.dsn, "pg-dsn", "postgres://biba:boba@localhost:5432/greenlight", "PostgreSQL connection URL")
 	flag.IntVar(&cfg.db.maxOpenConns, "pg-max-open-conns", 25, "PostgreSQL max open connections")
 	flag.StringVar(&cfg.db.maxIdleTime, "pg-max-idle-time", "15m", "PostgreSQL max connection idle time")
@@ -73,22 +72,10 @@ func main() {
 		models: data.NewModels(dbPool),
 	}
 
-	mux := http.NewServeMux()
-	mux.HandleFunc("/v1/healthcheck", app.healthcheckHandler)
-
-	srv := &http.Server{
-		Addr:         fmt.Sprintf(":%d", cfg.port),
-		Handler:      app.routes(),
-		IdleTimeout:  time.Minute,
-		ReadTimeout:  5 * time.Second,
-		WriteTimeout: 10 * time.Second,
+	err = app.serve() // start the HTTP server
+	if err != nil {
+		logger.PrintFatal(err, nil) // log the error and exit
 	}
-
-	logger.PrintInfo("starting server", map[string]string{"addr": srv.Addr, "env": cfg.env})
-	// Start the HTTP server.
-	err = srv.ListenAndServe()
-	// Use the PrintFatal() method to log the error and exit.
-	logger.PrintFatal(err, nil)
 }
 
 func openDB(cfg config) (*pgxpool.Pool, error) {
