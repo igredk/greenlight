@@ -38,7 +38,7 @@ func ValidateMovie(v *validator.Validator, movie *Movie) {
 	v.Check(validator.Unique(movie.Genres), "genres", "must not contain duplicate values")
 }
 
-// Define a MovieModel struct type which wraps a connection pool.
+// A MovieModel struct type which wraps a connection pool.
 type MovieModel struct {
 	DB *pgxpool.Pool
 }
