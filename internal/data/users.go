@@ -7,12 +7,9 @@ import (
 
 	"github.com/igredk/greenlight/internal/validator"
 	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"golang.org/x/crypto/bcrypt"
-)
-
-var (
-	ErrDuplicateEmail = errors.New("duplicate email")
 )
 
 type User struct {
@@ -110,9 +107,12 @@ func (m UserModel) Insert(user *User) error {
 
 	err := m.DB.QueryRow(ctx, query, args...).Scan(&user.ID, &user.CreatedAt, &user.Version)
 	if err != nil {
+		var ucError *pgconn.PgError
 		switch {
-		case err.Error() == `pq: duplicate key value violates unique constraint "users_email_key"`:
-			return ErrDuplicateEmail
+		case errors.As(err, &ucError):
+			if ucError.Code == UniqueConstraintViolation {
+				return ErrDuplicateEmail
+			}
 		default:
 			return err
 		}
@@ -167,9 +167,12 @@ func (m UserModel) Update(user *User) error {
 
 	err := m.DB.QueryRow(ctx, query, args...).Scan(&user.Version)
 	if err != nil {
+		var ucError *pgconn.PgError
 		switch {
-		case err.Error() == `pq: duplicate key value violates unique constraint "users_email_key"`:
-			return ErrDuplicateEmail
+		case errors.As(err, &ucError):
+			if ucError.Code == UniqueConstraintViolation {
+				return ErrDuplicateEmail
+			}
 		case errors.Is(err, pgx.ErrNoRows):
 			return ErrEditConflict
 		default:
