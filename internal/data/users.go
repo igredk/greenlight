@@ -140,6 +140,7 @@ func (m UserModel) GetByEmail(email string) (*User, error) {
 	defer cancel()
 
 	rows, _ := m.DB.Query(ctx, query, email)
+	defer rows.Close()
 
 	user, err := pgx.CollectOneRow(rows, pgx.RowToAddrOfStructByName[User])
 	if err != nil {
