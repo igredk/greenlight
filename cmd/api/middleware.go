@@ -125,7 +125,7 @@ func (app *application) authenticate(next http.Handler) http.Handler {
 			app.invalidAuthenticationTokenResponse(w, r)
 			return
 		}
-		token := headerParts[1] // Extract the actual authentication token from the header parts.
+		token := headerParts[1] // extract the actual authentication token from the header parts
 
 		// Validate the token to make sure it is in a sensible format.
 		v := validator.New()
@@ -146,8 +146,29 @@ func (app *application) authenticate(next http.Handler) http.Handler {
 			return
 		}
 
-		r = app.contextSetUser(r, user) // Add the user information to the request context.
+		r = app.contextSetUser(r, user) // add the user information to the request context
 
-		next.ServeHTTP(w, r) // Call the next handler in the chain.
+		next.ServeHTTP(w, r)
+	})
+}
+
+// Instead of accepting and returning a http.Handler, requireActivatedUser accepts and returns a http.HandlerFunc.
+// This makes it possible to wrap handler functions directly with this middleware,
+// without needing to make any further conversions.
+func (app *application) requireActivatedUser(next http.HandlerFunc) http.HandlerFunc {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		user := app.contextGetUser(r) // retrieve the user information from the request context
+		// If the user is anonymous, inform the client that they should authenticate before trying again.
+		if user.IsAnonymous() {
+			app.authenticationRequiredResponse(w, r)
+			return
+		}
+		// If the user is not activated, inform them that they need to activate their account.
+		if !user.Activated {
+			app.inactiveAccountResponse(w, r)
+			return
+		}
+
+		next.ServeHTTP(w, r)
 	})
 }
