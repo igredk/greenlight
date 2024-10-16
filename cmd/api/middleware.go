@@ -45,7 +45,7 @@ func (app *application) rateLimit(next http.Handler) http.Handler {
 		mu      sync.Mutex
 		clients = make(map[string]*client)
 	)
-	// Launch a background goroutine which removes old entries from the clients map once every minute.
+	// Launch a background goroutine which removes old entries from the clients map.
 	go func() {
 		for {
 			time.Sleep(time.Minute)
@@ -152,18 +152,31 @@ func (app *application) authenticate(next http.Handler) http.Handler {
 	})
 }
 
-// Instead of accepting and returning a http.Handler, requireActivatedUser accepts and returns a http.HandlerFunc.
-// This makes it possible to wrap handler functions directly with this middleware,
+// Instead of accepting and returning a http.Handler, mw's below accept and return a http.HandlerFunc.
+// This makes it possible to wrap handler functions directly with such middlewares,
 // without needing to make any further conversions.
-func (app *application) requireActivatedUser(next http.HandlerFunc) http.HandlerFunc {
+
+// Middleware to check that a user is not anonymous.
+func (app *application) requireAuthenticatedUser(next http.HandlerFunc) http.HandlerFunc {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		user := app.contextGetUser(r) // retrieve the user information from the request context
-		// If the user is anonymous, inform the client that they should authenticate before trying again.
+		user := app.contextGetUser(r)
+
 		if user.IsAnonymous() {
 			app.authenticationRequiredResponse(w, r)
 			return
 		}
-		// If the user is not activated, inform them that they need to activate their account.
+
+		next.ServeHTTP(w, r)
+	})
+}
+
+// Checks that a user is both authenticated and activated.
+func (app *application) requireActivatedUser(next http.HandlerFunc) http.HandlerFunc {
+	// Rather than returning this http.HandlerFunc we assign it to the variable fn.
+	fn := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		user := app.contextGetUser(r)
+
+		// Check that a user is activated.
 		if !user.Activated {
 			app.inactiveAccountResponse(w, r)
 			return
@@ -171,4 +184,30 @@ func (app *application) requireActivatedUser(next http.HandlerFunc) http.Handler
 
 		next.ServeHTTP(w, r)
 	})
+
+	// Wrap fn with the requireAuthenticatedUser() middleware before returning it.
+	return app.requireAuthenticatedUser(fn)
+}
+
+// First parameter for the middleware function is the permission code that we require the user to have.
+func (app *application) requirePermission(code string, next http.HandlerFunc) http.HandlerFunc {
+	fn := func(w http.ResponseWriter, r *http.Request) {
+		user := app.contextGetUser(r) // retrieve the user from the request context
+		// Get the slice of permissions for the user.
+		permissions, err := app.models.Permissions.GetAllForUser(user.ID)
+		if err != nil {
+			app.serverErrorResponse(w, r, err)
+			return
+		}
+		// Check if the slice includes the required permission. If it doesn't, then return a 403 Forbidden response.
+		if !permissions.Include(code) {
+			app.notPermittedResponse(w, r)
+			return
+		}
+
+		next.ServeHTTP(w, r)
+	}
+
+	// Wrap this with the requireActivatedUser() middleware before returning it.
+	return app.requireActivatedUser(fn)
 }
