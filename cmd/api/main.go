@@ -2,8 +2,10 @@ package main
 
 import (
 	"context"
+	"expvar"
 	"flag"
 	"os"
+	"runtime"
 	"strconv"
 	"strings"
 	"sync"
@@ -91,6 +93,21 @@ func main() {
 			"conn_idle_time": dbPool.Config().MaxConnIdleTime.String(),
 		},
 	)
+
+	// Publish version in metrics.
+	expvar.NewString("version").Set(version)
+	// Publish the number of active goroutines.
+	expvar.Publish("goroutines", expvar.Func(func() any {
+		return runtime.NumGoroutine()
+	}))
+	// Publish the database connection pool statistics.
+	expvar.Publish("database", expvar.Func(func() any {
+		return dbPool.Stat()
+	}))
+	// Publish the current Unix timestamp.
+	expvar.Publish("timestamp", expvar.Func(func() any {
+		return time.Now().Unix()
+	}))
 
 	app := &application{
 		config: cfg,
