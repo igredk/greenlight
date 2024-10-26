@@ -100,9 +100,23 @@ func main() {
 	expvar.Publish("goroutines", expvar.Func(func() any {
 		return runtime.NumGoroutine()
 	}))
-	// Publish the database connection pool statistics.
+	// Publish the database connection pool statistics in a serializable format.
 	expvar.Publish("database", expvar.Func(func() any {
-		return dbPool.Stat()
+		stats := dbPool.Stat()
+		return map[string]interface{}{
+			"acquire_count":              stats.AcquireCount(),
+			"acquire_duration":           stats.AcquireDuration(),
+			"acquired_conns":             stats.AcquiredConns(),
+			"canceled_acquire":           stats.CanceledAcquireCount(),
+			"constructing_conns":         stats.ConstructingConns(),
+			"empty_acquire_count":        stats.EmptyAcquireCount(),
+			"idle_conns":                 stats.IdleConns(),
+			"max_conns":                  stats.MaxConns(),
+			"max_idle_destroy_count":     stats.MaxIdleDestroyCount(),
+			"max_lifetime_destroy_count": stats.MaxLifetimeDestroyCount(),
+			"new_conns_count":            stats.NewConnsCount(),
+			"total_conns":                stats.TotalConns(),
+		}
 	}))
 	// Publish the current Unix timestamp.
 	expvar.Publish("timestamp", expvar.Func(func() any {

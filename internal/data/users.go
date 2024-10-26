@@ -136,13 +136,20 @@ func (m UserModel) GetByEmail(email string) (*User, error) {
         FROM users
         WHERE email = $1`
 
+	var user User
+
 	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
 	defer cancel()
 
-	rows, _ := m.DB.Query(ctx, query, email)
-	defer rows.Close()
-
-	user, err := pgx.CollectOneRow(rows, pgx.RowToAddrOfStructByName[User])
+	err := m.DB.QueryRow(ctx, query, email).Scan(
+		&user.ID,
+		&user.CreatedAt,
+		&user.Name,
+		&user.Email,
+		&user.Password.hash,
+		&user.Activated,
+		&user.Version,
+	)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return nil, ErrRecordNotFound
@@ -151,7 +158,7 @@ func (m UserModel) GetByEmail(email string) (*User, error) {
 		}
 	}
 
-	return user, nil
+	return &user, nil
 }
 
 // Update the details for a specific user.
