@@ -6,10 +6,12 @@ import (
 	"fmt"
 	"net"
 	"net/http"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
 
+	"github.com/felixge/httpsnoop"
 	"github.com/igredk/greenlight/internal/data"
 	"github.com/igredk/greenlight/internal/validator"
 	"golang.org/x/time/rate"
@@ -251,14 +253,18 @@ func (app *application) metrics(next http.Handler) http.Handler {
 	totalRequestsReceived := expvar.NewInt("total_requests_received")
 	totalResponsesSent := expvar.NewInt("total_responses_sent")
 	totalProcessingTimeMicroseconds := expvar.NewInt("total_processing_time_μs")
+	totalResponsesSentByStatus := expvar.NewMap("total_responses_sent_by_status")
 
 	// The following code will be run for every request...
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		start := time.Now()                           // Record the time that we started to process the request.
-		totalRequestsReceived.Add(1)                  // Increment the number of requests received by 1.
-		next.ServeHTTP(w, r)                          // Call the next handler in the chain.
-		totalResponsesSent.Add(1)                     // Increment the number of responses sent by 1.
-		duration := time.Since(start).Microseconds()  // Calculate the number of microseconds from request start.
-		totalProcessingTimeMicroseconds.Add(duration) // Increment the total processing time.
+		totalRequestsReceived.Add(1) // Increment the number of requests received by 1.
+
+		metrics := httpsnoop.CaptureMetrics(next, w, r)
+
+		totalResponsesSent.Add(1) // Increment the number of responses sent by 1.
+		// Get the request processing time in microseconds from httpsnoop and increment the cumulative processing time.
+        totalProcessingTimeMicroseconds.Add(metrics.Duration.Microseconds())
+        // Increment the count for the given status code. Expvar map is string-keyed, so we use the strconv.Itoa().
+        totalResponsesSentByStatus.Add(strconv.Itoa(metrics.Code), 1)
 	})
 }
