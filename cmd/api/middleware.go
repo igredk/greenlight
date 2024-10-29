@@ -263,8 +263,8 @@ func (app *application) metrics(next http.Handler) http.Handler {
 
 		totalResponsesSent.Add(1) // Increment the number of responses sent by 1.
 		// Get the request processing time in microseconds from httpsnoop and increment the cumulative processing time.
-        totalProcessingTimeMicroseconds.Add(metrics.Duration.Microseconds())
-        // Increment the count for the given status code. Expvar map is string-keyed, so we use the strconv.Itoa().
-        totalResponsesSentByStatus.Add(strconv.Itoa(metrics.Code), 1)
+		totalProcessingTimeMicroseconds.Add(metrics.Duration.Microseconds())
+		// Increment the count for the given status code. Expvar map is string-keyed, so we use the strconv.Itoa().
+		totalResponsesSentByStatus.Add(strconv.Itoa(metrics.Code), 1)
 	})
 }

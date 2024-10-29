@@ -58,7 +58,7 @@ func main() {
 	flag.IntVar(&cfg.port, "port", 4000, "API server port")
 	flag.StringVar(&cfg.env, "env", "development", "Environment (development|staging|production)")
 	// Database
-	flag.StringVar(&cfg.db.dsn, "pg-dsn", "postgres://biba:boba@localhost:5432/greenlight", "PostgreSQL connection URL")
+	flag.StringVar(&cfg.db.dsn, "pg-dsn", "", "PostgreSQL connection URL")
 	flag.IntVar(&cfg.db.maxOpenConns, "pg-max-open-conns", 25, "PostgreSQL max open connections")
 	flag.StringVar(&cfg.db.maxIdleTime, "pg-max-idle-time", "15m", "PostgreSQL max connection idle time")
 	// Rate limiter
