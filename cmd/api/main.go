@@ -4,6 +4,7 @@ import (
 	"context"
 	"expvar"
 	"flag"
+	"fmt"
 	"os"
 	"runtime"
 	"strconv"
@@ -14,10 +15,13 @@ import (
 	"github.com/igredk/greenlight/internal/data"
 	"github.com/igredk/greenlight/internal/jsonlog"
 	"github.com/igredk/greenlight/internal/mailer"
+	"github.com/igredk/greenlight/internal/vcs"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
-const version string = "1.0.0"
+var (
+	version = vcs.Version()
+)
 
 type config struct {
 	port int
@@ -77,7 +81,15 @@ func main() {
 		return nil
 	})
 
+	displayVersion := flag.Bool("version", false, "Display version and exit")
+
 	flag.Parse()
+
+	// Print the version number and exit if the version flag value is true.
+	if *displayVersion {
+		fmt.Printf("Version:\t%s\n", version)
+		os.Exit(0)
+	}
 
 	logger := jsonlog.New(os.Stdout, jsonlog.LevelInfo)
 
