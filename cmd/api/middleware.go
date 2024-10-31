@@ -4,7 +4,6 @@ import (
 	"errors"
 	"expvar"
 	"fmt"
-	"net"
 	"net/http"
 	"strconv"
 	"strings"
@@ -14,6 +13,7 @@ import (
 	"github.com/felixge/httpsnoop"
 	"github.com/igredk/greenlight/internal/data"
 	"github.com/igredk/greenlight/internal/validator"
+	"github.com/tomasen/realip"
 	"golang.org/x/time/rate"
 )
 
@@ -68,13 +68,9 @@ func (app *application) rateLimit(next http.Handler) http.Handler {
 
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if app.config.limiter.enabled {
-			ip, _, err := net.SplitHostPort(r.RemoteAddr)
-			if err != nil {
-				app.serverErrorResponse(w, r, err)
-				return
-			}
-			// Lock the mutex to prevent this code from being executed concurrently.
-			mu.Lock()
+			ip := realip.FromRequest(r) // Get the client's real IP address.
+
+			mu.Lock() // Lock the mutex to prevent code below from being executed concurrently.
 
 			if _, found := clients[ip]; !found {
 				// Create and add a new client struct to the map if it doesn't already exist.
